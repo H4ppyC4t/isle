@@ -8,6 +8,9 @@
 #include "legoworld.h"
 #include "misc.h"
 #include "misc/legostorage.h"
+#include "mxmisc.h"
+#include "mxticklemanager.h"
+#include "mxtimer.h"
 #include "scripts.h"
 #include "sndanim_actions.h"
 #include "viewmanager/viewmanager.h"
@@ -15,6 +18,7 @@
 #include <stdio.h>
 
 DECOMP_SIZE_ASSERT(LegoPlantManager, 0x2c)
+DECOMP_SIZE_ASSERT(LegoPlantManager::AnimEntry, 0x0c)
 
 // GLOBAL: LEGO1 0x100f1660
 const char* g_plantLodNames[4][5] = {
@@ -73,7 +77,7 @@ void LegoPlantManager::Init()
 
 	m_worldId = -1;
 	m_unk0x0c = 0;
-	m_unk0x24 = 0;
+	m_numEntries = 0;
 }
 
 // FUNCTION: LEGO1 0x10026360
@@ -96,11 +100,11 @@ void LegoPlantManager::Reset(MxS32 p_worldId)
 	MxU32 i;
 	DeleteObjects(g_sndAnimScript, SndanimScript::c_AnimC1, SndanimScript::c_AnimBld18);
 
-	for (i = 0; i < m_unk0x24; i++) {
-		delete m_unk0x10[i];
+	for (i = 0; i < m_numEntries; i++) {
+		delete m_entries[i];
 	}
 
-	m_unk0x24 = 0;
+	m_numEntries = 0;
 
 	for (i = 0; i < sizeOfArray(g_plantInfo); i++) {
 		RemovePlant(i, p_worldId);
@@ -424,6 +428,7 @@ MxU32 LegoPlantManager::GetSoundId(LegoEntity* p_entity, MxBool p_state)
 }
 
 // FUNCTION: LEGO1 0x10026be0
+// FUNCTION: BETA10 0x100c62bc
 void LegoPlantManager::SetCustomizeAnimFile(const char* p_value)
 {
 	if (g_customizeAnimFile != NULL) {
@@ -442,21 +447,122 @@ void LegoPlantManager::SetCustomizeAnimFile(const char* p_value)
 	}
 }
 
-// STUB: LEGO1 0x10026c50
-void LegoPlantManager::FUN_10026c50(LegoEntity* p_entity)
+// FUNCTION: LEGO1 0x10026c50
+// FUNCTION: BETA10 0x100c6349
+MxBool LegoPlantManager::FUN_10026c50(LegoEntity* p_entity)
 {
-	// TODO
+	LegoPlantInfo* info = GetInfo(p_entity);
+
+	if (info == NULL) {
+		return FALSE;
+	}
+
+	return FUN_10026c80(info - g_plantInfo);
+}
+
+// FUNCTION: LEGO1 0x10026c80
+// FUNCTION: BETA10 0x100c63eb
+MxBool LegoPlantManager::FUN_10026c80(MxS32 p_index)
+{
+	if (p_index >= sizeOfArray(g_plantInfo)) {
+		return FALSE;
+	}
+
+	LegoPlantInfo* info = &g_plantInfo[p_index];
+
+	if (info == NULL) {
+		return FALSE;
+	}
+
+	MxBool result = TRUE;
+
+	if (info->m_unk0x16 < 0) {
+		info->m_unk0x16 = g_unk0x100f16c0[info->m_variant];
+	}
+
+	if (info->m_unk0x16 > 0) {
+		LegoROI* roi = info->m_entity->GetROI();
+		info->m_unk0x16--;
+
+		if (info->m_unk0x16 == 1) {
+			info->m_unk0x16 = 0;
+		}
+
+		if (info->m_unk0x16 == 0) {
+			roi->SetVisibility(FALSE);
+		}
+		else {
+			FUN_10026860(info - g_plantInfo);
+			info->m_entity->SetLocation(info->m_position, info->m_direction, info->m_up, FALSE);
+		}
+	}
+	else {
+		result = FALSE;
+	}
+
+	return result;
+}
+
+// FUNCTION: LEGO1 0x10026d70
+void LegoPlantManager::ScheduleAnimation(LegoEntity* p_entity, MxLong p_length)
+{
+	m_world = CurrentWorld();
+
+	if (m_numEntries == 0) {
+		TickleManager()->RegisterClient(this, 50);
+	}
+
+	AnimEntry* entry = m_entries[m_numEntries] = new AnimEntry;
+	m_numEntries++;
+
+	entry->m_entity = p_entity;
+	entry->m_roi = p_entity->GetROI();
+	entry->m_time = Timer()->GetTime() + p_length + 1000;
+	FUN_100271b0(p_entity, -1);
 }
 
 // STUB: LEGO1 0x10026e00
 MxResult LegoPlantManager::Tickle()
 {
-	// TODO
-	return 0;
+	return SUCCESS;
 }
 
-// STUB: LEGO1 0x10027120
+// FUNCTION: LEGO1 0x10027120
 void LegoPlantManager::FUN_10027120()
 {
-	// TODO
+	LegoWorld* world = CurrentWorld();
+
+	for (MxS32 i = 0; i < sizeOfArray(g_plantInfo); i++) {
+		g_plantInfo[i].m_unk0x16 = -1;
+		g_plantInfo[i].m_initialUnk0x16 = -1;
+		FUN_10026860(i);
+
+		if (g_plantInfo[i].m_entity != NULL) {
+			g_plantInfo[i].m_entity->SetLocation(
+				g_plantInfo[i].m_position,
+				g_plantInfo[i].m_direction,
+				g_plantInfo[i].m_up,
+				FALSE
+			);
+		}
+	}
+}
+
+// FUNCTION: LEGO1 0x100271b0
+void LegoPlantManager::FUN_100271b0(LegoEntity* p_entity, MxS32 p_adjust)
+{
+	LegoPlantInfo* info = GetInfo(p_entity);
+
+	if (info != NULL) {
+		if (info->m_unk0x16 < 0) {
+			info->m_unk0x16 = g_unk0x100f16c0[info->m_variant];
+		}
+
+		if (info->m_unk0x16 > 0) {
+			info->m_unk0x16 += p_adjust;
+			if (info->m_unk0x16 <= 1 && p_adjust < 0) {
+				info->m_unk0x16 = 0;
+			}
+		}
+	}
 }
