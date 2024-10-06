@@ -6,10 +6,15 @@
 #include "realtime/vector.h"
 
 // VTABLE: LEGO1 0x100d4488
+// VTABLE: BETA10 0x101b84d0
 // SIZE 0x14
 class Mx3DPointFloat : public Vector3 {
 public:
+	// FUNCTION: LEGO1 0x1001d170
+	// FUNCTION: BETA10 0x10011990
 	Mx3DPointFloat() : Vector3(m_elements) {}
+
+	// FUNCTION: BETA10 0x10011870
 	Mx3DPointFloat(float p_x, float p_y, float p_z) : Vector3(m_elements)
 	{
 		m_elements[0] = p_x;
@@ -24,18 +29,18 @@ public:
 	// FUNCTION: BETA10 0x100151e0
 	Mx3DPointFloat(const Vector3& p_other) : Vector3(m_elements) { EqualsImpl(p_other.m_data); }
 
-	// SYNTHETIC: LEGO1 0x1001d170
-	// Mx3DPointFloat::Mx3DPointFloat
-
 	// FUNCTION: LEGO1 0x10003c10
 	virtual void operator=(const Vector3& p_impl) { EqualsImpl(p_impl.m_data); } // vtable+0x88
 
-	float GetX() { return m_data[0]; }
-	float GetY() { return m_data[1]; }
-	float GetZ() { return m_data[2]; }
-
+	// FUNCTION: BETA10 0x10013460
 	float& operator[](int idx) { return m_data[idx]; }
-	const float& operator[](int idx) const { return m_data[idx]; }
+
+	// According to the PDB, BETA10 will not link this one if it is never used
+	// const float& operator[](int idx) const { return m_data[idx]; }
+
+	// only used by LegoUnknown100db7f4::FUN_1002ddc0() for some unknown reason
+	// FUNCTION: BETA10 0x100373c0
+	float& index_operator(int idx) { return m_data[idx]; }
 
 	// SYNTHETIC: LEGO1 0x10010c00
 	// Mx3DPointFloat::operator=
@@ -50,8 +55,10 @@ private:
 class Mx4DPointFloat : public Vector4 {
 public:
 	// FUNCTION: LEGO1 0x10048290
+	// FUNCTION: BETA10 0x100484c0
 	Mx4DPointFloat() : Vector4(m_elements) {}
 
+	// FUNCTION: BETA10 0x10073bb0
 	Mx4DPointFloat(float p_x, float p_y, float p_z, float p_a) : Vector4(m_elements)
 	{
 		m_elements[0] = p_x;
@@ -65,7 +72,9 @@ public:
 	// FUNCTION: LEGO1 0x10003200
 	virtual void operator=(const Vector4& p_impl) { EqualsImpl(p_impl.m_data); } // vtable+0x98
 
+	// FUNCTION: BETA10 0x1004af10
 	float& operator[](int idx) { return m_data[idx]; }
+
 	const float& operator[](int idx) const { return m_data[idx]; }
 
 	// SYNTHETIC: LEGO1 0x10064b20
@@ -167,36 +176,36 @@ inline void UnknownMx4DPointFloat::Unknown7()
 // FUNCTION: BETA10 0x1004ab10
 inline int UnknownMx4DPointFloat::FUN_100040a0(Vector4& p_v, float p_f)
 {
-	undefined4 state = m_unk0x30;
-
-	if (state == 1) {
+	if (m_unk0x30 == 1) {
 		p_v = m_unk0x00;
-		p_v[3] = (1.0 - p_f) * acos(p_v[3]) * 2.0;
+		p_v[3] = (1.0 - p_f) * acos((double) p_v[3]) * 2.0;
 		return p_v.NormalizeQuaternion();
 	}
-	else if (state == 2) {
+	else if (m_unk0x30 == 2) {
 		p_v = m_unk0x18;
-		p_v[3] = p_f * acos(p_v[3]) * 2.0;
+		p_v[3] = p_f * acos((double) p_v[3]) * 2.0;
 		return p_v.NormalizeQuaternion();
 	}
-	else if (state == 3) {
+	else if (m_unk0x30 == 3) {
+		int i;
 		double d1 = p_v.Dot(&m_unk0x00, &m_unk0x18);
-		double d2;
+		double a;
+		double b;
 
 		if (d1 + 1.0 > 0.00001) {
 			if (1.0 - d1 > 0.00001) {
-				double d = acos(d1);
-				double s = sin(d);
-				d1 = sin((1.0 - p_f) * d) / s;
-				d2 = sin(p_f * d) / s;
+				double d2 = acos(d1);
+				double denominator = sin(d2);
+				a = sin((1.0 - p_f) * d2) / denominator;
+				b = sin(p_f * d2) / denominator;
 			}
 			else {
-				d1 = 1.0 - p_f;
-				d2 = p_f;
+				a = 1.0 - p_f;
+				b = p_f;
 			}
 
-			for (int i = 0; i < 4; i++) {
-				p_v[i] = m_unk0x18[i] * d2 + m_unk0x00[i] * d1;
+			for (i = 0; i < 4; i++) {
+				p_v[i] = m_unk0x00[i] * a + m_unk0x18[i] * b;
 			}
 		}
 		else {
@@ -204,11 +213,11 @@ inline int UnknownMx4DPointFloat::FUN_100040a0(Vector4& p_v, float p_f)
 			p_v[1] = m_unk0x00[0];
 			p_v[2] = -m_unk0x00[3];
 			p_v[3] = m_unk0x00[2];
-			d1 = sin((1.0 - p_f) * 1.570796326794895);
-			d2 = sin(p_f * 1.570796326794895);
+			a = sin((1.0 - p_f) * 1.570796326794895);
+			b = sin(p_f * 1.570796326794895);
 
-			for (int i = 0; i < 3; i++) {
-				p_v[i] = m_unk0x00[i] * d1 + p_v[i] * d2;
+			for (i = 0; i < 3; i++) {
+				p_v[i] = m_unk0x00[i] * a + p_v[i] * b;
 			}
 		}
 

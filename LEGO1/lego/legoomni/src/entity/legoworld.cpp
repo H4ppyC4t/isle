@@ -224,6 +224,7 @@ void LegoWorld::Destroy(MxBool p_fromDestructor)
 }
 
 // FUNCTION: LEGO1 0x1001f5e0
+// FUNCTION: BETA10 0x100d9f5f
 MxLong LegoWorld::Notify(MxParam& p_param)
 {
 	MxLong result = 0;
@@ -379,6 +380,7 @@ void LegoWorld::AddPath(LegoPathController* p_controller)
 }
 
 // FUNCTION: LEGO1 0x10020020
+// FUNCTION: BETA10 0x100da77c
 LegoPathBoundary* LegoWorld::FindPathBoundary(const char* p_name)
 {
 	LegoPathControllerListCursor cursor(&m_list0x68);

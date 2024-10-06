@@ -29,6 +29,7 @@
 DECOMP_SIZE_ASSERT(LegoAnimPresenter, 0xbc)
 
 // FUNCTION: LEGO1 0x10068420
+// FUNCTION: BETA10 0x1004e5f0
 LegoAnimPresenter::LegoAnimPresenter()
 {
 	Init();
@@ -788,9 +789,9 @@ void LegoAnimPresenter::StartingTickle()
 	FUN_1006c8a0(TRUE);
 
 	if (m_unk0x78 == NULL) {
-		if (fabs(m_action->GetDirection().GetX()) >= 0.00000047683716F ||
-			fabs(m_action->GetDirection().GetY()) >= 0.00000047683716F ||
-			fabs(m_action->GetDirection().GetZ()) >= 0.00000047683716F) {
+		if (fabs(m_action->GetDirection()[0]) >= 0.00000047683716F ||
+			fabs(m_action->GetDirection()[1]) >= 0.00000047683716F ||
+			fabs(m_action->GetDirection()[2]) >= 0.00000047683716F) {
 			m_unk0x78 = new MxMatrix();
 			CalcLocalTransform(m_action->GetLocation(), m_action->GetDirection(), m_action->GetUp(), *m_unk0x78);
 		}
